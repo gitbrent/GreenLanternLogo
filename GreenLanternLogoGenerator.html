@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Green Lantern Logo Wallpaper Generator Using HTML5 Canvas</title>
+	<meta name="author" content="https://github.com/gitbrent/GreenLanternLogo">
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+	<style>
+		body {
+			box-sizing: border-box;
+			padding: 0;
+			margin: 0;
+			/*
+			background-color: rgba(2,255,2, 0.5);
+			background-image: radial-gradient(circle farthest-side at center center, #C0CA07 0%, #027D00 100%);
+			*/
+		}
+		#logo {
+			box-sizing: border-box;
+			padding: 0;
+			margin: 0;
+		}
+
+		div.mainDialog { position: relative; }
+		div.mainDialog canvas { z-index: 1; }
+		div.mainDialog div {
+			position: absolute;
+			top: 10px;
+			left: 10px;
+			right: 1px;
+			padding: 5px 10px;
+			height: 95px;
+			width: 300px;
+			line-height: 16px;
+			overflow: hidden;
+			/* --- */
+			font-family: Verdana, Helvetica, Arial, sans-serif;
+			font-size: 11px;
+			text-align: left;
+		}
+		div.mainDialog input {
+			vertical-align: sub;
+			user-select: none;          
+		}
+		div.mainDialog div.blackbg {
+			z-index: 2;
+			background-color: #000;
+			opacity: 0.30;
+		}
+		div.mainDialog div.label {
+			z-index: 3;
+			color: white;
+			width: 80px;
+		}
+		div.mainDialog div.label span {
+			display: block;
+			text-align: center;
+			padding: 2px 6px;
+			border-bottom: 1px solid rgba(255,255,255, 0.25);
+			margin-bottom: 3px;
+		}
+	</style>
+
+	<!--
+	<script src="jquery-2.1.1.min.js"></script>
+	-->
+	<script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+	<script>
+		var DEBUG_MODE = (window.location.href.indexOf('debug') > -1);
+		var CANVAS_W = $(window).width()-5;
+		var CANVAS_H = $(window).height()-5;
+		var FILL = "rgba(30,30,30,.5)";
+		var COLOR_GREEN = "rgb(2,125,0)";
+		var COLOR_STROKE = "rgb(20,20,20)";
+		var RECT_HEIGHT = 75;
+
+		function doDrawLogo() {
+			var intCtrX = 0;
+			var intCtrY = 0;
+			//
+			var prop_rect_offset_x = 0;
+			var prop_outer_border_thk = 10;
+			var prop_line_wdth = 3;
+			var prop_radius = 0;
+			var prop_gra_clr_1 = "";
+			var prop_gra_clr_2 = "";
+			//
+			var format_web = "";
+			var format_iphone5 = "";
+			var format_ipad = "";
+			var format_pc = "";
+			//
+			var opt_dbl_ring = false;
+			var opt_black_bkgd = false;
+
+			// =======
+			// STEP 1: Determine output format
+			// =======
+			format_web = $('#chkWeb').prop('checked');
+			format_pc = $('#chkPc').prop('checked');
+			format_iphone5 = $('#chkIphone5').prop('checked');
+			format_ipad = $('#chkIpad').prop('checked');
+			opt_dbl_ring = $('#chkOptRing').prop('checked');
+			opt_black_bkgd = $('#chkOptBlack').prop('checked');
+			prop_rect_offset_x = 30;
+
+			// =======
+			// STEP 1: Set some defaults
+			// =======
+			// DESC: Our rect thickness and prop_radius are keyed off the ratio of W-to-H, so calc them live each time we're called
+			// DESC: This keep the same amount of space on top and sides of circle whether its Portrait or Landscape mode 
+			prop_outer_border_thk = 10;
+			prop_line_wdth = 3;
+
+			if (format_ipad || format_pc) {
+				prop_rect_offset_x = (prop_rect_offset_x * 2);
+			}
+
+			// =======
+			// STEP 2: Adjust CANVAS size for various output formats
+			// =======
+			/* FYI:
+				- iPhone 5, iPhone 5s, iPod touch 5th gen - 1136 x 640
+				- iPad Air, iPad 4, iPad 3, iPad mini with Retina display - 2048 x 1536
+				- iPad 2, original iPad mini - 1028 x 768
+				- iPhone 4S, iPhone 4 - 960 x 640
+			*/
+			if (format_web) {
+				CANVAS_W = $(window).width()-5;
+				CANVAS_H = $(window).height()-5;
+			}
+			else if (format_pc) {
+				CANVAS_W = 1920;
+				CANVAS_H = 1080;
+				prop_radius = (CANVAS_H / 2.25);
+			}
+			else if (format_iphone5) {
+				CANVAS_W = 640;
+				// Add some offset at the top to "push" all elements down to give iPhone lockscreen clock some room
+				CANVAS_H = 1300;
+				prop_outer_border_thk = 15;
+				prop_line_wdth = 5;
+				//
+				prop_radius = (CANVAS_W / 2.5);
+			}
+			else if (format_ipad) {
+				CANVAS_W = 2048;
+				// Add some offset at the top to "push" all elements down to give iPad lockscreen clock some room
+				CANVAS_H = 1700;
+				prop_outer_border_thk = 15;
+				prop_line_wdth = 5;
+				//
+				prop_radius = (CANVAS_W / 3);
+			}
+
+			// =======
+			// STEP 3: Find center points, wrap up rect-height
+			// =======
+			intCtrX = (CANVAS_W / 2);
+			intCtrY = (CANVAS_H / 2);
+			(intCtrX > intCtrY) ? RECT_HEIGHT = (CANVAS_H * 0.10) : RECT_HEIGHT = (CANVAS_W * 0.10);
+			if (format_web)
+				(intCtrX > intCtrY) ? prop_radius = (CANVAS_H / 2.25) : prop_radius = (CANVAS_W / 2.25);
+			
+			// =======
+			// STEP 4: Set CANVAS size
+			// =======
+			$('#logo').attr('width', CANVAS_W);
+			$('#logo').attr('height', CANVAS_H);
+
+			// ====================================================================================
+			// ====================================================================================
+			// BEGIN DRAWING
+			// ====================================================================================
+			// ====================================================================================
+			// REF: ctx.arc(x, y, prop_radius, startAngle, endAngle, anticlockwise);
+			var ctx = $("#logo")[0].getContext('2d');
+			var intCoordX = 0, intCoordY = 0, x1 = 0, x2 = 0, x3 = 0, x4 = 0, y1 = 0, y2 = 0, y3 = 0, y4 = 0;
+			// FIRST: Set some overall Canvas options
+			ctx.font = "bold 12px Arial";
+			ctx.strokeStyle = COLOR_STROKE;
+			ctx.lineWidth = prop_line_wdth;
+
+			// -------
+			// STEP 1: Background gradient
+			// -------
+			var radgrad = ctx.createRadialGradient(intCtrX, intCtrY, prop_radius/2, intCtrX, intCtrY, CANVAS_H);
+			if (opt_black_bkgd) {
+				prop_gra_clr_1 = '#006400';
+				prop_gra_clr_2 = '#000000';
+			}
+			else {
+				prop_gra_clr_1 = '#C0CA07';
+				prop_gra_clr_2 = '#006400';
+			}
+			if (format_iphone5) {
+				radgrad.addColorStop( 0, prop_gra_clr_1);
+				radgrad.addColorStop(.4, prop_gra_clr_2);
+			}
+			else {
+				radgrad.addColorStop(0, prop_gra_clr_1);
+				radgrad.addColorStop(1, prop_gra_clr_2);
+			}
+			ctx.fillStyle = radgrad;
+			ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+
+			// -------
+			// STEP 2: Draw black border circle
+			// -------
+			// Draw optionsla double outer ring
+			if (opt_dbl_ring) {
+				ctx.beginPath();
+				ctx.arc(intCtrX, intCtrY, prop_radius+prop_outer_border_thk+16, 0, Math.PI*2, true);
+				//ctx.fillStyle = COLOR_GREEN;
+				//ctx.fill();
+				// Gradient fill for Double Outer Ring
+				var radgrad=ctx.createLinearGradient(0,0,0,CANVAS_H);
+				radgrad.addColorStop( 0, '#C0CA07');
+				radgrad.addColorStop(.5, '#006400');
+				radgrad.addColorStop( 1, '#C0CA07');
+				ctx.fillStyle = radgrad;
+				ctx.fill();
+				//
+				ctx.stroke();
+			}
+
+			// Draw standard black outer ring/border
+			ctx.beginPath();
+			ctx.arc(intCtrX, intCtrY, prop_radius+prop_outer_border_thk, 0, Math.PI*2, true);
+			ctx.fillStyle = COLOR_STROKE;
+			ctx.fill();
+			ctx.stroke();
+
+			// -------
+			// STEP 3: Draw white background circle
+			// -------
+			ctx.beginPath();
+			ctx.arc(intCtrX, intCtrY, prop_radius, 0, Math.PI*2, true);
+			ctx.fillStyle = "rgb(255,255,255)";
+			ctx.fill();
+
+			// -------
+			// STEP 4: Inner circles
+			// -------
+			// Green ring
+			ctx.beginPath();
+			ctx.arc(intCtrX, intCtrY, (prop_radius/1.75), 0, Math.PI*2, true);
+			ctx.fillStyle = COLOR_GREEN;
+			ctx.fill();
+			ctx.stroke();
+			// white inner circle (big white dot)
+			ctx.beginPath();
+			ctx.arc(intCtrX, intCtrY, (prop_radius/1.75)-RECT_HEIGHT, 0, Math.PI*2, true);
+			ctx.fillStyle = "rgb(255,255,255)";
+			ctx.fill();
+			ctx.stroke();
+
+			// -------
+			// STEP 5: Build logo using various styles
+			// -------
+			// DESC: We need the edges to just touch the big logo center circle at the same relative coordinates
+			// DESIGN: Use [Pythagorean Theorem] with the angle where we want to consistently place our rectangle to get the answer!
+			if ($('#Style1').prop('checked')) {
+				// Top rect
+				ctx.beginPath();
+				intCoordX = intCtrX + prop_radius * Math.cos(-135 * Math.PI/180);
+				intCoordY = intCtrY + prop_radius * Math.sin(-135 * Math.PI/180);
+				ctx.fillStyle = COLOR_GREEN;
+				ctx.fillRect(intCoordX+prop_rect_offset_x, intCoordY, (CANVAS_W - (intCoordX*2)-(prop_rect_offset_x*2)), RECT_HEIGHT);
+				ctx.strokeRect(intCoordX+prop_rect_offset_x, intCoordY, (CANVAS_W - (intCoordX*2)-(prop_rect_offset_x*2)), RECT_HEIGHT);
+
+				// Btm rect
+				ctx.beginPath();
+				intCoordX = intCtrX + prop_radius * Math.cos(135 * Math.PI/180);
+				intCoordY = intCtrY + prop_radius * Math.sin(135 * Math.PI/180);
+				ctx.fillStyle = COLOR_GREEN;
+				ctx.fillRect(intCoordX+prop_rect_offset_x, (intCoordY - RECT_HEIGHT), (CANVAS_W - (intCoordX*2)-(prop_rect_offset_x*2)), RECT_HEIGHT);
+				ctx.strokeRect(intCoordX+prop_rect_offset_x, (intCoordY - RECT_HEIGHT), (CANVAS_W - (intCoordX*2)-(prop_rect_offset_x*2)), RECT_HEIGHT);
+
+				// Cover top stroke overlap
+				// Update angles to match our decreased prop_radius in some cases
+				if (format_iphone5 || format_ipad) {
+					x1 = (intCtrX + (prop_radius/1.75 * Math.cos(232 * Math.PI/180)));
+					y1 = (intCtrY + (prop_radius/1.75 * Math.sin(232 * Math.PI/180)));
+					x4 = (intCtrX + (prop_radius/1.75 * Math.cos(308 * Math.PI/180)));
+					y4 = (intCtrY + (prop_radius/1.75 * Math.sin(308 * Math.PI/180)));
+				}
+				else {
+					x1 = (intCtrX + (prop_radius/1.75 * Math.cos(236 * Math.PI/180)));
+					y1 = (intCtrY + (prop_radius/1.75 * Math.sin(236 * Math.PI/180)));
+					x4 = (intCtrX + (prop_radius/1.75 * Math.cos(304 * Math.PI/180)));
+					y4 = (intCtrY + (prop_radius/1.75 * Math.sin(304 * Math.PI/180)));
+				}
+				// Minor tweaks for larger sizes
+				if (format_ipad || format_pc) { x1 += 1; x4 -= 1; }
+				ctx.beginPath();
+				ctx.moveTo(x1+1, y1-5);
+				ctx.lineTo(x4-1, y4-5);
+				ctx.strokeStyle = COLOR_GREEN;
+				ctx.lineWidth = prop_line_wdth+30;
+				ctx.stroke();
+
+				// Cover bottom stroke overlap
+				if (format_iphone5 || format_ipad) {
+					x1 = (intCtrX + (prop_radius/1.75 * Math.cos(128 * Math.PI/180)));
+					y1 = (intCtrY + (prop_radius/1.75 * Math.sin(128 * Math.PI/180)));
+					x4 = (intCtrX + (prop_radius/1.75 * Math.cos(52 * Math.PI/180)));
+					y4 = (intCtrY + (prop_radius/1.75 * Math.sin(52 * Math.PI/180)));
+				}
+				else {
+					x1 = (intCtrX + (prop_radius/1.75 * Math.cos(124 * Math.PI/180)));
+					y1 = (intCtrY + (prop_radius/1.75 * Math.sin(124 * Math.PI/180)));
+					x4 = (intCtrX + (prop_radius/1.75 * Math.cos(56 * Math.PI/180)));
+					y4 = (intCtrY + (prop_radius/1.75 * Math.sin(56 * Math.PI/180)));
+				}
+				// Minor tweaks for larger sizes
+				if (format_ipad || format_pc) { x1 += 1; x4 -= 1; }
+				ctx.beginPath();
+				ctx.moveTo(x1+1, y1);
+				ctx.lineTo(x4-1, y4);
+				ctx.strokeStyle = COLOR_GREEN;
+				ctx.lineWidth = prop_line_wdth+30;
+				ctx.stroke();
+			}
+			else if ($('#Style2').prop('checked')) {
+				// TOP LEFT (of reg rect)
+				intCoordX = intCtrX + (prop_radius * Math.cos(-135 * Math.PI/180));
+
+				// ---------
+				// TOP-SHAPE
+				// ---------
+				ctx.beginPath();
+				// MATH: Our white inner circle was drawn at a prop_radius of (prop_radius/1.75), so use that as our (prop_radius) arg for Path. Theorem
+				x1 = (intCtrX + (prop_radius/1.75 * Math.cos(240 * Math.PI/180)));
+				y1 = (intCtrY + (prop_radius/1.75 * Math.sin(240 * Math.PI/180)));
+				x2 = (x1 - RECT_HEIGHT);
+				y2 = (y1 - RECT_HEIGHT);
+				// BOTTOM-LEFT (circle touch)
+				ctx.moveTo(x1, y1);
+				// BOTTOM-LEFT (furthest left)
+				ctx.lineTo( (x1-(x2-intCoordX)+(prop_rect_offset_x/3)), y1 );
+				// TOP-LEFT (furthest left)
+				ctx.lineTo(intCoordX+prop_rect_offset_x, y2);
+
+				x4 = (intCtrX + (prop_radius/1.75 * Math.cos(300 * Math.PI/180)));
+				y4 = (intCtrY + (prop_radius/1.75 * Math.sin(300 * Math.PI/180)));
+				x3 = (x4 + RECT_HEIGHT);
+				y3 = (y4 - RECT_HEIGHT);
+				// TOP-RIGHT
+				ctx.lineTo( intCoordX+prop_rect_offset_x+(CANVAS_W-((intCoordX*2)+(prop_rect_offset_x*2))), y3);
+
+				// BOTTOM-RIGHT
+				ctx.lineTo( (x4+(x2-intCoordX)-(prop_rect_offset_x/3)), y4);
+
+				// BOTTOM-RIGHT (touches circle)
+				ctx.lineTo(x4, y4);
+				//
+				ctx.closePath();
+				ctx.fillStyle = COLOR_GREEN;
+				ctx.fill();
+				ctx.lineWidth = prop_line_wdth;
+				ctx.strokeStyle = COLOR_STROKE;
+				ctx.stroke();
+
+				// Cover top stroke overlap
+				ctx.beginPath();
+				ctx.moveTo(x1, y1);
+				ctx.lineTo(x4, y4);
+				ctx.strokeStyle = COLOR_GREEN;
+				ctx.lineWidth = prop_line_wdth+2;
+				ctx.stroke();
+
+				// ------------
+				// BOTTOM-SHAPE
+				// ------------
+				ctx.beginPath();
+				// MATH: Our white inner circle was drawn at a prop_radius of (prop_radius/1.75), so use that as our (prop_radius) arg for Path. Theorem
+				x1 = (intCtrX + (prop_radius/1.75 * Math.cos(120 * Math.PI/180)));
+				y1 = (intCtrY + (prop_radius/1.75 * Math.sin(120 * Math.PI/180)));
+				x2 = (x1 - RECT_HEIGHT);
+				y2 = (y1 + RECT_HEIGHT);
+				// BOTTOM-LEFT (circle touch)
+				ctx.moveTo(x1, y1);
+				// TOP-LEFT (furthest left)
+				ctx.lineTo( (x1-(x2-intCoordX)+(prop_rect_offset_x/3)), y1);
+				// TOP-LEFT (furthest left)
+				ctx.lineTo(intCoordX+prop_rect_offset_x, y2);
+
+				x4 = (intCtrX + (prop_radius/1.75 * Math.cos(60 * Math.PI/180)));
+				y4 = (intCtrY + (prop_radius/1.75 * Math.sin(60 * Math.PI/180)));
+				x3 = (x4 + RECT_HEIGHT);
+				y3 = (y4 + RECT_HEIGHT);
+				// TOP-RIGHT
+				ctx.lineTo( intCoordX+prop_rect_offset_x+(CANVAS_W-((intCoordX*2)+(prop_rect_offset_x*2))), y3);
+
+				// BOTTOM-RIGHT
+				ctx.lineTo( (x4+(x2-intCoordX)-(prop_rect_offset_x/3)), y4);
+
+				// BOTTOM-RIGHT (touches circle)
+				ctx.lineTo(x4, y4);
+				//
+				ctx.closePath();
+				ctx.fillStyle = COLOR_GREEN;
+				ctx.fill();
+				ctx.lineWidth = prop_line_wdth;
+				ctx.strokeStyle = COLOR_STROKE;
+				ctx.stroke();
+
+				// Cover bottom stroke overlap
+				ctx.beginPath();
+				ctx.moveTo(x1+1, y1);
+				ctx.lineTo(x4-1, y4);
+				ctx.strokeStyle = COLOR_GREEN;
+				ctx.lineWidth = prop_line_wdth+2;
+				ctx.stroke();
+			}
+			else if ($('#Style3').prop('checked')) {
+				// ---------
+				// TOP-SHAPE
+				// ---------
+				ctx.beginPath();
+				// MATH: Our white inner circle was drawn at a prop_radius of (prop_radius/1.75), so use that as our (prop_radius) arg for Path. Theorem
+				x1 = (intCtrX + (prop_radius/1.75 * Math.cos(240 * Math.PI/180)));
+				y1 = (intCtrY + (prop_radius/1.75 * Math.sin(240 * Math.PI/180)));
+				x2 = (x1 - RECT_HEIGHT);
+				y2 = (y1 - RECT_HEIGHT);
+				// BOTTOM-LEFT
+				ctx.moveTo(x1, y1);
+				// TOP-LEFT
+				ctx.lineTo(x2, y2);
+				x4 = (intCtrX + (prop_radius/1.75 * Math.cos(300 * Math.PI/180)));
+				y4 = (intCtrY + (prop_radius/1.75 * Math.sin(300 * Math.PI/180)));
+				x3 = (x4 + RECT_HEIGHT);
+				y3 = (y4 - RECT_HEIGHT);
+				// TOP-RIGHT
+				ctx.lineTo(x3, y3);
+				// BOTTOM-RIGHT
+				ctx.lineTo(x4, y4);
+				//
+				ctx.closePath();
+				ctx.fillStyle = COLOR_GREEN;
+				ctx.fill();
+				ctx.lineWidth = prop_line_wdth;
+				ctx.strokeStyle = COLOR_STROKE;
+				ctx.stroke();
+
+				// Cover stroke where it covers circle
+				ctx.beginPath();
+				ctx.moveTo(x1+1, y1);
+				ctx.lineTo(x4-1, y4);
+				ctx.strokeStyle = COLOR_GREEN;
+				ctx.lineWidth = prop_line_wdth+2;
+				ctx.stroke();
+
+				// ------------
+				// BOTTOM-SHAPE
+				// ------------
+				ctx.beginPath();
+				// MATH: Our white inner circle was drawn at a prop_radius of (prop_radius/1.75), so use that as our (prop_radius) arg for Path. Theorem
+				x1 = (intCtrX + (prop_radius/1.75 * Math.cos(120 * Math.PI/180)));
+				y1 = (intCtrY + (prop_radius/1.75 * Math.sin(120 * Math.PI/180)));
+				x2 = (x1 - RECT_HEIGHT);
+				y2 = (y1 + RECT_HEIGHT);
+				// BOTTOM-LEFT
+				ctx.moveTo(x1, y1);
+				// TOP-LEFT
+				ctx.lineTo(x2, y2);
+				x4 = (intCtrX + (prop_radius/1.75 * Math.cos(60 * Math.PI/180)));
+				y4 = (intCtrY + (prop_radius/1.75 * Math.sin(60 * Math.PI/180)));
+				x3 = (x4 + RECT_HEIGHT);
+				y3 = (y4 + RECT_HEIGHT);
+				// TOP-RIGHT
+				ctx.lineTo(x3, y3);
+				// BOTTOM-RIGHT
+				ctx.lineTo(x4, y4);
+				//
+				ctx.closePath();
+				ctx.fillStyle = COLOR_GREEN;
+				ctx.fill();
+				ctx.lineWidth = prop_line_wdth;
+				ctx.strokeStyle = COLOR_STROKE;
+				ctx.stroke();
+
+				// Cover bottom stroke overlap
+				ctx.beginPath();
+				ctx.moveTo(x1+1, y1);
+				ctx.lineTo(x4-1, y4);
+				ctx.strokeStyle = COLOR_GREEN;
+				ctx.lineWidth = prop_line_wdth+2;
+				ctx.stroke();
+			}
+		}
+
+		// Resize Canvas if Browser Window changes
+		$(window).resize(function(){
+			doDrawLogo();
+		});
+
+		$(document).ready(function(){
+			doDrawLogo();
+		});
+	</script>
+</head>
+<body>
+	<div class="mainDialog" style="width:90px">
+		<div class="blackbg"></div>
+		<div class="label">
+			<span>STYLE</span>
+			<label><input id="Style1" name="styles" type="radio" onchange="doDrawLogo()" checked="checked">Original</label>
+			<label><input id="Style2" name="styles" type="radio" onchange="doDrawLogo()">Angled</label>
+			<label><input id="Style3" name="styles" type="radio" onchange="doDrawLogo()">New Skool</label>
+		</div>
+
+		<div class="label" style="left:100px; width:100px;">
+			<span>FORMAT</span>
+			<label><input id="chkWeb"     name="formats" type="radio" onchange="doDrawLogo()" checked="checked">Web Browser</label><br>
+			<label><input id="chkPc"      name="formats" type="radio" onchange="doDrawLogo()">PC Wallpaper</label><br>
+			<label><input id="chkIphone5" name="formats" type="radio" onchange="doDrawLogo()">iPhone 5</label><br>
+			<label><input id="chkIpad"    name="formats" type="radio" onchange="doDrawLogo()">iPad</label><br>
+		</div>
+
+		<div class="label" style="left:210px; width:100px;">
+			<span>FORMAT</span>
+			<label><input id="chkOptRing"  type="checkbox" onchange="doDrawLogo()">Double Ring</label><br>
+			<label><input id="chkOptBlack" type="checkbox" onchange="doDrawLogo()">Black Bkgd</label><br>
+		</div>
+
+		<canvas id='logo' height='100px' width='300px'>
+			Sorry, but you need a modern browser to use the Green Lantern Logo Generator!
+		</canvas>
+	</div>
+</body>
+</html>
